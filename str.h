@@ -37,6 +37,7 @@
                 /* inclusion sees STR_H already defined and skips */
                 /* straight to #endif, preventing duplicate code. */
 
+#include <assert.h>   /* assert()                                  */
 #include <string.h>   /* strlen, strncpy, memcpy, memmove, strncat */
 #include <ctype.h>    /* isspace                                   */
 
