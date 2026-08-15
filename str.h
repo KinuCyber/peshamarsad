@@ -30,15 +30,15 @@
  * Buffer size constants live here so every file agrees on the same limits.
  */
 
-#ifndef STR_H   /* header guard: if STR_H is not yet defined...  */
-#define STR_H   /* ...define it, then include everything below.  */
-                /* The closing #endif is at the bottom of file.  */
+#ifndef STR_H   /* header guard: if STR_H is not yet defined...   */
+#define STR_H   /* ...define it, then include everything below.   */
+                /* The closing #endif is at the bottom of file.   */
                 /* If this file is included twice, the second     */
                 /* inclusion sees STR_H already defined and skips */
                 /* straight to #endif, preventing duplicate code. */
 
 #include <string.h>   /* strlen, strncpy, memcpy, memmove, strncat */
-#include <ctype.h>    /* isspace                                    */
+#include <ctype.h>    /* isspace                                   */
 
 /* ------------------------------------------------------------------
  * Buffer size constants
