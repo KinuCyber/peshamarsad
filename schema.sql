@@ -103,6 +103,28 @@ CREATE TABLE reviews (
 
 
 -- ------------------------------------------------------------
+-- ADDRESSES
+-- One organization can have multiple addresses (branches, campuses).
+-- Only city is required -- other fields use 'n/a' when not applicable.
+-- Stored as structured fields rather than a single string to allow
+-- per-field display and future filtering by city.
+-- ------------------------------------------------------------
+CREATE TABLE addresses (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id        INTEGER NOT NULL REFERENCES organizations(id)
+                      ON DELETE CASCADE,
+    label         TEXT,               -- "Head Office", "B-17 Branch", etc.
+    plot_number   TEXT,               -- plot or house number
+    street_number TEXT,               -- street number
+    block_number  TEXT,               -- block number
+    sector        TEXT,               -- sector (e.g. B-17, F-7)
+    city          TEXT    NOT NULL,   -- city is the only required field
+    landmark      TEXT,               -- nearby landmark, free description
+    created_at    TEXT NOT NULL DEFAULT (date('now'))
+);
+ 
+ 
+-- ------------------------------------------------------------
 -- CONTACTS / EMPLOYEE PROFILES
 -- Personality and attitude are ordered comma-separated strings.
 -- First entry is primary, subsequent entries are secondary etc.
@@ -214,6 +236,7 @@ CREATE TABLE status_history (
 -- Covers the most common lookup and filter patterns.
 -- ------------------------------------------------------------
 CREATE INDEX idx_reviews_org         ON reviews(org_id);
+CREATE INDEX idx_adresses_org        ON addresses(org_id);
 CREATE INDEX idx_contacts_org        ON contacts(org_id);
 CREATE INDEX idx_positions_org       ON positions(org_id);
 CREATE INDEX idx_applications_org    ON applications(org_id);
