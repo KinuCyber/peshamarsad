@@ -159,13 +159,14 @@ Intern, Entry, Junior, Mid, Senior, Managerial, Executive
 See [`schema.sql`](schema.sql) for the full annotated database schema.
 
 Tables:
-- `organizations` — companies and institutions being tracked
-- `reviews` — time-stamped reviews per organization
-- `contacts` — employee profiles with ordered personality and attitude lists
-- `positions` — job openings at organizations
-- `applications` — applications submitted, with documents and follow-up date
-- `application_contacts` — junction table linking contacts to applications
-- `status_history` — full timeline of status changes per application
+- `organizations` - companies and institutions being tracked
+- `addresses` - address fields per organization
+- `reviews` - time-stamped reviews per organization
+- `contacts` - employee profiles with ordered personality and attitude lists
+- `positions` - job openings at organizations
+- `applications` - applications submitted, with documents and follow-up date
+- `application_contacts` - junction table linking contacts to applications
+- `status_history` - full timeline of status changes per application
 
 ---
 
@@ -235,5 +236,6 @@ approach handles additions, removals, and reorderings in one step.
 
     You should have received a copy of the GNU General Public License
     along with this program.If not, see <https://www.gnu.org/licenses/>.
+
 
 
