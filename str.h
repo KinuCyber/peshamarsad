@@ -71,22 +71,36 @@ static inline char *str_trim(char *s)
     assert(s != NULL);  /* Only compiled when debugging is enabled */
     if (!s) return s;   /* guard: do nothing if pointer is NULL */
 
+    /* strip non-printable characters (below 32 ASCI, except tab) */
+    char *src = s, *dst = s;
+    while (*src) {
+	if ((unsigned char)*src >= 32 || *src == '\t') {
+	    *dst++ = *src; 
+	}
+	src++;
+    }
+    *dst = '\0';
+
+
     /* --- trim leading whitespace --- */
     char *start = s;
-    while (*start && isspace((unsigned char)*start))
+    while (*start && isspace((unsigned char)*start)) {
         start++;
+    }
     /* start now points at the first non-space character (or '\0') */
 
-    if (start != s)
+    if (start != s) {
         memmove(s, start, strlen(start) + 1);
         /* memmove shifts the trimmed content back to the buffer start.
          * We use memmove (not memcpy) because the source and destination
          * regions inside the same buffer can overlap.                   */
+    }
 
     /* --- trim trailing whitespace --- */
     char *end = s + strlen(s) - 1;
-    while (end >= s && isspace((unsigned char)*end))
+    while (end >= s && isspace((unsigned char)*end)) {
         *end-- = '\0';
+    }
     /* Write '\0' over each trailing space, working backwards.
      * '\0' is the null terminator -- the byte that tells C "string ends
      * here". Every C string ends with one.                              */
