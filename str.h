@@ -120,11 +120,11 @@ static inline int str_empty(const char *s)
  * is longer than n. This wrapper always does, which prevents a whole
  * class of bugs where a string "runs off the end" of its buffer.
  *
- * The whole purpose is to prefer buffer overflow.
+ * The whole purpose is to prevent buffer overflow.
  * This is achieved by ensuring that the string always ends with null
- * terminator and of n size, even at the cost of string truncation.i
+ * terminator and of n size, even at the cost of string truncation.
  *
- * The asset helps with identifying truncation in debug builds.
+ * The assert helps with identifying truncation in debug builds.
  *  ------------------------------------------------------------------ */
 static inline void str_copy(char *dst, const char *src, size_t n)
 {
