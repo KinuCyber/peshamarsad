@@ -16,7 +16,7 @@
 
 -- ============================================================
 -- peshamarsad
--- پیشہ مرصد - Observatory of Profession
+-- پیشہ مرصد - Profession Observatory
 --
 -- A personal CLI job-hunt tracker.
 -- Database path is passed via --db at runtime. No hardcoded paths.
