@@ -1,5 +1,5 @@
 # peshamarsad
-### پیشہ مرصد — Observatory of Profession
+### پیشہ مرصد — Profession Observatory
 
 A personal, local-first CLI job-hunt tracker built in C with SQLite.
 Tracks organizations, contacts, open positions, applications, documents
