@@ -32,6 +32,7 @@
  *   cli_pick             numbered menu, required choice
  *   cli_pick_opt         numbered menu, 0 to skip
  *   cli_pick_update      numbered menu showing default, 0 to keep
+ *   cli_read_date        date field with default fallback
  *
  * Display helpers:
  *   cli_header           print a section header with rule
@@ -354,6 +355,37 @@ static inline void cli_pick_update(const char *label,
     }
 }
 
+/* ------------------------------------------------------------------
+ * cli_read_date
+ *
+ * Prompt for a date field, showing def as the bracketed default.
+ * If the user presses Enter without typing, buf is filled with def.
+ * Otherwise buf gets trimmed input.
+ *
+ * def must not be NULL. Callers supply today_str output or any
+ * existing date value. Format validation is the caller's concern
+ * if ever needed; this function is intentionally format-agnostic.
+ */
+static inline void cli_read_date(const char *label,
+		                 const char *def,
+				 char *buf,
+				 size_t n)
+{
+    printf("  %s [%s]: ", label, def ? def : "");
+    fflush(stdout);
+    char tmp[PM_BUF];
+    if (!read_line(tmp, sizeof(tmp))) {
+	snprintf(buf, n, "%s", def ? def : "");
+	return;
+    }
+    str_trim(tmp);
+    if (str_empty(tmp)) {
+	snprintf(buf, n, "%s", def ? def : "");
+    } else {
+	snprintf(buf, n, "%s", tmp);
+    }
+}
+
 
 /* ------------------------------------------------------------------
  * Display helpers
@@ -384,3 +416,4 @@ static inline void cli_bool_field(const char *label, int value)
 
 
 #endif /* CLI_H */
+
