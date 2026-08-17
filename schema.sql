@@ -236,7 +236,7 @@ CREATE TABLE status_history (
 -- Covers the most common lookup and filter patterns.
 -- ------------------------------------------------------------
 CREATE INDEX idx_reviews_org         ON reviews(org_id);
-CREATE INDEX idx_adresses_org        ON addresses(org_id);
+CREATE INDEX idx_addresses_org       ON addresses(org_id);
 CREATE INDEX idx_contacts_org        ON contacts(org_id);
 CREATE INDEX idx_positions_org       ON positions(org_id);
 CREATE INDEX idx_applications_org    ON applications(org_id);
