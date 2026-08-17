@@ -20,6 +20,7 @@
 --
 -- A personal CLI job-hunt tracker.
 -- Database path is passed via --db at runtime. No hardcoded paths.
+-- Schema version: 2 (tracked via PRAGMA user_version at end of file)
 -- ============================================================
 
 PRAGMA foreign_keys = ON;
@@ -54,6 +55,10 @@ PRAGMA foreign_keys = ON;
 --   Suspicious  guarded, reading you negatively
 --   Hostile     actively negative or obstructive
 --
+-- Contact relation values:
+--   Recruiter, Hiring Manager, Employee, Manager, Executive,
+--   Alumni, Friend, Former Colleague, Cold Contact, Reference
+--
 -- Application status values:
 --   Applied, No Response, Followed Up,
 --   Interview Scheduled, Offer, Rejected, Withdrawn
@@ -65,8 +70,37 @@ PRAGMA foreign_keys = ON;
 --   Micro (1-9), Small (10-49), Medium (50-249),
 --   Large (250-999), Enterprise (1000+), Unknown
 --
+-- Organization type:
+--   University, School, NGO, Startup, Corporation,
+--   Government, Private Academy, Military
+--
 -- Position level:
 --   Intern, Entry, Junior, Mid, Senior, Managerial, Executive
+--
+-- Employment type:
+--   Full-time, Part-time, Contract, Internship, Volunteer
+--
+-- Remote type:
+--   Remote, Hybrid, On-site
+--
+-- Salary period:
+--   Monthly, Yearly, Hourly, Daily
+--
+-- Discovery source (where you first encountered the opportunity):
+--   LinkedIn, Glassdoor, Indeed, Rozee.pk, Company Website,
+--   Referral, Recruiter, University Portal, Job Fair,
+--   Direct Search, Other
+--
+-- Application channel (how you actually submitted):
+--   Company Website, LinkedIn, Email, Recruiter,
+--   Referral, University Portal, Hand Delivered, Other
+--
+-- Fit scores (positions): integer 1-5, or NULL if not yet assessed
+--   1 = very poor fit   2 = poor fit   3 = moderate fit
+--   4 = good fit        5 = excellent fit
+--   Dimensions: skill_fit, compensation_fit, location_fit, level_fit
+--   CHECK constraints provide a database-level backstop; C layer
+--   validates before insert/update.
 --
 -- ------------------------------------------------------------
 
@@ -78,12 +112,37 @@ CREATE TABLE organizations (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     name            TEXT    NOT NULL,
     registered      BOOLEAN,            -- formally registered entity
-    website         TEXT,               -- URL or NULL
-    has_social      BOOLEAN,            -- any social media presence
+    website         TEXT,               -- primary URL; kept as a direct column
+                                        -- for convenience. Additional links
+                                        -- (LinkedIn, Glassdoor, etc.) go in
+                                        -- org_links
+    industry        TEXT,               -- Education, Technology, Healthcare, etc.
+    org_type        TEXT,               -- University, School, NGO, Startup, etc.
     security_level  TEXT,               -- Low, Medium, High
     size            TEXT,               -- see size enum above
     notes           TEXT,
     created_at      TEXT NOT NULL DEFAULT (date('now'))
+);
+
+
+-- ------------------------------------------------------------
+-- ORG LINKS
+-- Social media, job boards, registries, and any other URLs
+-- associated with an organization. Replaces the would-be
+-- social_media TEXT column -- a separate table handles unlimited
+-- link types cleanly without schema changes per new platform.
+--
+-- type is free text with examples: LinkedIn, GitHub, Glassdoor,
+-- Careers, Crunchbase, Registry, Instagram, X, Facebook, etc.
+-- ------------------------------------------------------------
+CREATE TABLE org_links (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id      INTEGER NOT NULL REFERENCES organizations(id)
+                    ON DELETE CASCADE,
+    type        TEXT NOT NULL,   -- LinkedIn, Glassdoor, Careers, etc.
+    label       TEXT,            -- optional human-readable label
+    url         TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (date('now'))
 );
 
 
@@ -122,8 +181,8 @@ CREATE TABLE addresses (
     landmark      TEXT,               -- nearby landmark, free description
     created_at    TEXT NOT NULL DEFAULT (date('now'))
 );
- 
- 
+
+
 -- ------------------------------------------------------------
 -- CONTACTS / EMPLOYEE PROFILES
 -- Personality and attitude are ordered comma-separated strings.
@@ -137,11 +196,35 @@ CREATE TABLE contacts (
     org_id              INTEGER NOT NULL REFERENCES organizations(id)
                             ON DELETE CASCADE,
     position_title      TEXT,           -- their actual title, free text
+    relation            TEXT,           -- Recruiter, Hiring Manager, etc.
     personality         TEXT,           -- e.g. "Skeptic,Patron,Neutral"
     attitude            TEXT,           -- e.g. "Cautious,Friendly"
     leverage_potential  TEXT,           -- description-based assessment
+    how_met             TEXT,           -- networking event, LinkedIn, etc.
+    last_contact_date   TEXT,           -- YYYY-MM-DD
     notes               TEXT,
     created_at          TEXT NOT NULL DEFAULT (date('now'))
+);
+
+
+-- ------------------------------------------------------------
+-- CONTACT METHODS
+-- Email, phone, messaging handles per contact.
+-- Replaces the would-be contact_info TEXT column -- same
+-- reasoning as org_links: unlimited media types, clean
+-- per-medium lookup, no column proliferation.
+--
+-- medium is free text with examples: email, phone, telegram,
+-- whatsapp, linkedin, signal, etc.
+-- address is the actual value: email address, number, handle.
+-- ------------------------------------------------------------
+CREATE TABLE contact_methods (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    contact_id  INTEGER NOT NULL REFERENCES contacts(id)
+                    ON DELETE CASCADE,
+    medium      TEXT NOT NULL,   -- email, phone, telegram, etc.
+    address     TEXT NOT NULL,   -- the actual value
+    created_at  TEXT NOT NULL DEFAULT (date('now'))
 );
 
 
@@ -150,17 +233,53 @@ CREATE TABLE contacts (
 -- Describes a job opening at an organization.
 -- Deliberately has no reference to applications (avoids circular
 -- dependency). Applications reference positions, not vice versa.
+--
+-- job_location is the explicit position location and may differ
+-- from the org's address: a Karachi company can advertise an
+-- Islamabad role.
+--
+-- source_url captures the original listing URL, which tends to
+-- disappear from job boards quickly after the role closes.
+--
+-- Fit scores are personal assessments (Layer C), not objective
+-- properties of the role. NULL means not yet assessed.
+-- CHECK constraints are a database-level backstop; the C layer
+-- validates before every insert and update.
 -- ------------------------------------------------------------
 CREATE TABLE positions (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    org_id      INTEGER NOT NULL REFERENCES organizations(id)
-                    ON DELETE CASCADE,
-    department  TEXT,                   -- IT, Creative, Admin, etc.
-    role        TEXT,                   -- SOC Analyst, Technician, Modeler
-    level       TEXT,                   -- see level enum above
-    my_fit      TEXT,                   -- personal assessment, description
-    notes       TEXT,
-    created_at  TEXT NOT NULL DEFAULT (date('now'))
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id              INTEGER NOT NULL REFERENCES organizations(id)
+                            ON DELETE CASCADE,
+    department          TEXT,                   -- IT, Creative, Admin, etc.
+    role                TEXT,                   -- SOC Analyst, Technician, etc.
+    level               TEXT,                   -- see level enum above
+    employment_type     TEXT,                   -- Full-time, Part-time, etc.
+    remote_type         TEXT,                   -- Remote, Hybrid, On-site
+    job_location        TEXT,                   -- explicit position location
+    closing_date        TEXT,                   -- YYYY-MM-DD, application deadline
+    salary_min          INTEGER,                -- minimum salary
+    salary_max          INTEGER,                -- maximum salary
+    salary_currency     TEXT,                   -- ISO 4217 (PKR, USD, GBP, etc.)
+    salary_period       TEXT,                   -- Monthly, Yearly, Hourly, Daily
+    source              TEXT,                   -- where posting was found
+    source_url          TEXT,                   -- original listing URL
+    skill_fit           INTEGER                 -- skill match, 1-5 or NULL
+                            CHECK (skill_fit IN (1,2,3,4,5)
+                                   OR skill_fit IS NULL),
+    compensation_fit    INTEGER                 -- salary/benefits alignment, 1-5 or NULL
+                            CHECK (compensation_fit IN (1,2,3,4,5)
+                                   OR compensation_fit IS NULL),
+    location_fit        INTEGER                 -- location/remote fit, 1-5 or NULL
+                            CHECK (location_fit IN (1,2,3,4,5)
+                                   OR location_fit IS NULL),
+    level_fit           INTEGER                 -- seniority alignment, 1-5 or NULL
+                            CHECK (level_fit IN (1,2,3,4,5)
+                                   OR level_fit IS NULL),
+    fit_notes           TEXT,                   -- qualitative notes across all fit
+                                                -- dimensions; one shared field avoids
+                                                -- bloating column count
+    notes               TEXT,
+    created_at          TEXT NOT NULL DEFAULT (date('now'))
 );
 
 
@@ -169,10 +288,15 @@ CREATE TABLE positions (
 --
 -- current_status is denormalised from status_history for fast
 -- overview queries. The CLI updates both atomically on every
--- status change - they should never drift apart.
+-- status change -- they should never drift apart.
 --
 -- org_id is kept here directly (also reachable via position_id)
 -- for convenient filtering of applications by organization.
+--
+-- discovery_source and application_channel are distinct per the
+-- SHRM source-of-hire framework: you may discover a role on
+-- LinkedIn but submit via the company's own website. Tracking
+-- both enables accurate source-of-hire funnel analysis.
 -- ------------------------------------------------------------
 CREATE TABLE applications (
     id                      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +304,8 @@ CREATE TABLE applications (
     position_id             INTEGER NOT NULL REFERENCES positions(id),
     org_id                  INTEGER NOT NULL REFERENCES organizations(id),
     current_status          TEXT    NOT NULL DEFAULT 'Applied',
+    discovery_source        TEXT,               -- where you first found the role
+    application_channel     TEXT,               -- how you actually submitted
 
     -- Documents submitted by applicant
     resume_given            BOOLEAN DEFAULT 0,
@@ -234,14 +360,29 @@ CREATE TABLE status_history (
 -- ------------------------------------------------------------
 -- INDEXES
 -- Covers the most common lookup and filter patterns.
+-- New tables (org_links, contact_methods) indexed on their
+-- foreign keys.
+-- idx_addresses_org corrects the typo in v1 (idx_adresses_org).
 -- ------------------------------------------------------------
-CREATE INDEX idx_reviews_org         ON reviews(org_id);
-CREATE INDEX idx_addresses_org       ON addresses(org_id);
-CREATE INDEX idx_contacts_org        ON contacts(org_id);
-CREATE INDEX idx_positions_org       ON positions(org_id);
-CREATE INDEX idx_applications_org    ON applications(org_id);
-CREATE INDEX idx_applications_pos    ON applications(position_id);
-CREATE INDEX idx_applications_status ON applications(current_status);
-CREATE INDEX idx_status_history_app  ON status_history(application_id);
-CREATE INDEX idx_app_contacts_app    ON application_contacts(application_id);
-CREATE INDEX idx_app_contacts_con    ON application_contacts(contact_id);
+CREATE INDEX idx_org_links_org          ON org_links(org_id);
+CREATE INDEX idx_contact_methods_con    ON contact_methods(contact_id);
+CREATE INDEX idx_reviews_org            ON reviews(org_id);
+CREATE INDEX idx_addresses_org          ON addresses(org_id);
+CREATE INDEX idx_contacts_org           ON contacts(org_id);
+CREATE INDEX idx_positions_org          ON positions(org_id);
+CREATE INDEX idx_applications_org       ON applications(org_id);
+CREATE INDEX idx_applications_pos       ON applications(position_id);
+CREATE INDEX idx_applications_status    ON applications(current_status);
+CREATE INDEX idx_status_history_app     ON status_history(application_id);
+CREATE INDEX idx_app_contacts_app       ON application_contacts(application_id);
+CREATE INDEX idx_app_contacts_con       ON application_contacts(contact_id);
+
+
+-- ------------------------------------------------------------
+-- SCHEMA VERSION
+-- Tracks the schema version for db_migrate in db.h.
+-- Fresh databases are stamped here at creation time.
+-- Existing v1 databases (user_version = 0) are migrated
+-- by db_migrate before normal operation begins.
+-- ------------------------------------------------------------
+PRAGMA user_version = 2;
