@@ -35,6 +35,7 @@
  *   cli_read_date        date field with default fallback
  *
  * Display helpers:
+ *   cli_safe             "-" for NULL/empty, otherwise the string
  *   cli_header           print a section header with rule
  *   cli_sep              print a horizontal rule
  *   cli_field            "  Label:               value"
@@ -94,6 +95,18 @@ static inline int is_valid_int(const char *buf)
     return 1;
 }
 
+/* ------------------------------------------------------------------
+ * cli_safe
+ *
+ * Return "-" for NULL or empty strings, otherwise return s unchanged.
+ * Used in display code to avoid printing blank or missing values.
+ * Defined here rather than in the display section so that input
+ * helpers defined below can also use it.
+ * ------------------------------------------------------------------ */
+static inline const char *cli_safe(const char *s)
+{
+    return str_empty(s) ? "-" : s;
+}
 
 /* ------------------------------------------------------------------
  * cli_read
