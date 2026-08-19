@@ -22,17 +22,19 @@
  * Header-only, static inline, same pattern as str.h and db.h.
  *
  * Input helpers:
- *   cli_read             required field; loops until non-empty
- *   cli_read_opt         optional field; empty is accepted
- *   cli_read_update      show def value; Enter keeps it
- *   cli_read_bool        y/n prompt; returns 1 or 0
- *   cli_read_bool_update y/n showing default; Enter keeps default
- *   cli_read_int         integer prompt; loops until valid
- *   cli_confirm          "? [y/N]" confirmation; defaults to no
- *   cli_pick             numbered menu, required choice
- *   cli_pick_opt         numbered menu, 0 to skip
- *   cli_pick_update      numbered menu showing default, 0 to keep
- *   cli_read_date        date field with default fallback
+ *   cli_read                  required field; loops until non-empty
+ *   cli_read_opt              optional field; empty is accepted
+ *   cli_read_update           show def value; Enter keeps it
+ *   cli_read_bool             y/n prompt; returns 1 or 0
+ *   cli_read_bool_update      y/n showing default; Enter keeps default
+ *   cli_read_int              integer prompt; loops until valid
+ *   cli_confirm               "? [y/N]" confirmation; defaults to no
+ *   cli_pick                  numbered menu, required choice
+ *   cli_pick_opt              numbered menu, 0 to skip
+ *   cli_pick_update           numbered menu showing default, 0 to keep
+ *   cli_read_date             date field with default fallback
+ *   cli_read_ordered_list     validated comma-separated list; blank to skip
+ *   cli_update_ordered_list   same, showing current; Enter keeps current
  *
  * Display helpers:
  *   cli_safe             "-" for NULL/empty, otherwise the string
@@ -378,24 +380,117 @@ static inline void cli_pick_update(const char *label,
  * def must not be NULL. Callers supply today_str output or any
  * existing date value. Format validation is the caller's concern
  * if ever needed; this function is intentionally format-agnostic.
- */
+ * ------------------------------------------------------------------ */
 static inline void cli_read_date(const char *label,
-		                 const char *def,
-				 char *buf,
-				 size_t n)
+                                 const char *def,
+                                 char *buf,
+                                 size_t n)
 {
     printf("  %s [%s]: ", label, def ? def : "");
     fflush(stdout);
     char tmp[PM_BUF];
     if (!read_line(tmp, sizeof(tmp))) {
-	snprintf(buf, n, "%s", def ? def : "");
-	return;
+        snprintf(buf, n, "%s", def ? def : "");
+        return;
     }
     str_trim(tmp);
     if (str_empty(tmp)) {
-	snprintf(buf, n, "%s", def ? def : "");
+        snprintf(buf, n, "%s", def ? def : "");
     } else {
-	snprintf(buf, n, "%s", tmp);
+        snprintf(buf, n, "%s", tmp);
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_read_ordered_list
+ *
+ * Prompt for a comma-separated ordered list (e.g. personality,
+ * attitude). Prints available values, validates each entry against
+ * valid[], loops until all entries are valid or input is blank.
+ * Writes comma-joined result into buf.
+ * Returns entry count (0 if blank -- buf is set to "" in that case)
+ *
+ * First entry = primary, subsequent = secondary, tertiary, etc.
+ * ------------------------------------------------------------------ */
+static inline int cli_read_ordered_list(const char   *label,
+                                        const char   *valid[],
+                                        int           valid_n,
+                                        char         *buf,
+                                        size_t        n)
+{
+    char raw[PM_BUF];
+    char entries[PM_LIST_MAX][PM_ENTRY];
+
+    printf("  %s\n    Valid: ", label);
+    for (int i = 0; i < valid_n; i++)
+        printf("%s%s", valid[i], i < valid_n - 1 ? ", " : "\n");
+    printf("    Ordered, comma-separated (first = primary). "
+           "Leave blank to skip.\n");
+
+    for (;;) {
+        cli_read_opt("Values", raw, PM_BUF);
+        if (str_empty(raw)) { buf[0] = '\0'; return 0; }
+
+        int count = str_split(raw, ',', entries, PM_LIST_MAX);
+        int ok = 1;
+        for (int i = 0; i < count; i++) {
+            if (!str_in_list(entries[i], valid, valid_n)) {
+                printf("    Invalid: '%s'. Try again.\n", entries[i]);
+                ok = 0;
+                break;
+            }
+        }
+        if (ok) { str_join(buf, n, entries, count, ","); return count; }
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_update_ordered_list
+ *
+ * Like cli_read_ordered_list but shows the current value.
+ * Pressing Enter without typing leaves keeps the current value.
+ * ------------------------------------------------------------------ */
+static inline int cli_update_ordered_list(const char   *label,
+                                          const char   *current,
+                                          const char   *valid[],
+                                          int           valid_n,
+                                          char         *buf,
+                                          size_t        n)
+{
+    char raw[PM_BUF];
+    char entries[PM_LIST_MAX][PM_ENTRY];
+
+    printf("  %s [current: %s]\n    Valid: ", label, cli_safe(current));
+    for (int i = 0; i < valid_n; i++)
+        printf("%s%s", valid[i], i < valid_n - 1 ? ", " : "\n");
+    printf("    Ordered, comma-separated. Enter to keep current.\n");
+
+    for (;;) {
+        printf("  Values: ");
+        fflush(stdout);
+        if (!read_line(raw, PM_BUF)) {
+            snprintf(buf, n, "%s", current ? current : "");
+            return 0;
+        }
+        str_trim(raw);
+
+        if (str_empty(raw)) {
+            snprintf(buf, n, "%s", current ? current : "");
+            return 0;
+        }
+
+        int count = str_split(raw, ',', entries, PM_LIST_MAX);
+        int ok = 1;
+        for (int i = 0; i < count; i++) {
+            if (!str_in_list(entries[i], valid, valid_n)) {
+                printf("    Invalid: '%s'. Try again.\n", entries[i]);
+                ok = 0;
+                break;
+            }
+        }
+        if (ok) { str_join(buf, n, entries, count, ","); return count; }
     }
 }
 
