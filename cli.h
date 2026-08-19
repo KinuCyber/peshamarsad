@@ -527,4 +527,3 @@ static inline void cli_bool_field(const char *label, int value)
 
 
 #endif /* CLI_H */
-
