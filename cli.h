@@ -97,6 +97,7 @@ static inline int is_valid_int(const char *buf)
     return 1;
 }
 
+
 /* ------------------------------------------------------------------
  * cli_safe
  *
@@ -109,6 +110,7 @@ static inline const char *cli_safe(const char *s)
 {
     return str_empty(s) ? "-" : s;
 }
+
 
 /* ------------------------------------------------------------------
  * cli_read
@@ -369,6 +371,7 @@ static inline void cli_pick_update(const char *label,
         printf("  Invalid. Enter 0-%d.\n", count);
     }
 }
+
 
 /* ------------------------------------------------------------------
  * cli_read_date
