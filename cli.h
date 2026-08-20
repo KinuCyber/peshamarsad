@@ -35,6 +35,10 @@
  *   cli_read_date             date field with default fallback
  *   cli_read_ordered_list     validated comma-separated list; blank to skip
  *   cli_update_ordered_list   same, showing current; Enter keeps current
+ *   cli_read_fit              fit score 1-5; 0 = skip (stored as NULL)
+ *   cli_read_fit_update       same, showing current; 0 clears; Enter keeps
+ *   cli_read_salary           optional salary amount; 0 = skip (NULL)
+ *   cli_read_salary_update    same, showing current; 0 clears; Enter keeps
  *
  * Display helpers:
  *   cli_safe             "-" for NULL/empty, otherwise the string
@@ -494,6 +498,114 @@ static inline int cli_update_ordered_list(const char   *label,
             }
         }
         if (ok) { str_join(buf, n, entries, count, ","); return count; }
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_read_fit
+ *
+ * Prompt for a personal fit score (1 = very poor … 5 = excellent).
+ * Returns 0 when the user skips, which maps to SQL NULL via DB_NULL.
+ * ------------------------------------------------------------------ */
+static inline int cli_read_fit(const char *label)
+{
+    char buf[16];
+    for (;;) {
+        printf("  %s [1-5, 0=skip]: ", label);
+        fflush(stdout);
+        if (!read_line(buf, sizeof(buf))) return 0;
+        str_trim(buf);
+        if (str_empty(buf) || (buf[0] == '0' && buf[1] == '\0')) return 0;
+        if (is_valid_int(buf)) {
+            int v = atoi(buf);
+            if (v >= 1 && v <= 5) return v;
+        }
+        printf("  Enter 1-5, or 0 to skip.\n");
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_read_fit_update
+ *
+ * Like cli_read_fit but shows the current score and Enter keeps it.
+ * 0 explicitly clears the score to NULL. Returns current on Enter.
+ * ------------------------------------------------------------------ */
+static inline int cli_read_fit_update(const char *label, int current)
+{
+    char cur_str[12];
+    if (current > 0) snprintf(cur_str, sizeof(cur_str), "%d", current);
+    else             snprintf(cur_str, sizeof(cur_str), "-");
+
+    char buf[16];
+    for (;;) {
+        printf("  %s [1-5, 0=clear, Enter=keep (%s)]: ", label, cur_str);
+        fflush(stdout);
+        if (!read_line(buf, sizeof(buf))) return current;
+        str_trim(buf);
+        if (str_empty(buf)) return current;
+        if (buf[0] == '0' && buf[1] == '\0') return 0;
+        if (is_valid_int(buf)) {
+            int v = atoi(buf);
+            if (v >= 1 && v <= 5) return v;
+        }
+        printf("  Enter 1-5, 0 to clear, or Enter to keep.\n");
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_read_salary
+ *
+ * Prompt for an optional salary amount (positive integer).
+ * Returns -1 when the user skips (0 input = skip), which maps to
+ * SQL NULL via DB_NULL. Returns the amount otherwise.
+ * ------------------------------------------------------------------ */
+static inline int cli_read_salary(const char *label)
+{
+    char buf[PM_BUF];
+    for (;;) {
+        printf("  %s (0 to skip): ", label);
+        fflush(stdout);
+        if (!read_line(buf, sizeof(buf))) return -1;
+        str_trim(buf);
+        if (str_empty(buf) || (buf[0] == '0' && buf[1] == '\0')) return -1;
+        if (is_valid_int(buf)) {
+            int v = atoi(buf);
+            if (v > 0) return v;
+        }
+        printf("  Enter a positive number, or 0 to skip.\n");
+    }
+}
+
+
+/* ------------------------------------------------------------------
+ * cli_read_salary_update
+ *
+ * Like cli_read_salary but shows current and Enter keeps it.
+ * current is -1 when the field is currently NULL in the database.
+ * 0 input clears to NULL. Returns current on Enter.
+ * ------------------------------------------------------------------ */
+static inline int cli_read_salary_update(const char *label, int current)
+{
+    char cur_str[32];
+    if (current >= 0) snprintf(cur_str, sizeof(cur_str), "%d", current);
+    else              snprintf(cur_str, sizeof(cur_str), "-");
+
+    char buf[PM_BUF];
+    for (;;) {
+        printf("  %s [Enter=keep (%s), 0=clear]: ", label, cur_str);
+        fflush(stdout);
+        if (!read_line(buf, sizeof(buf))) return current;
+        str_trim(buf);
+        if (str_empty(buf)) return current;
+        if (buf[0] == '0' && buf[1] == '\0') return -1;
+        if (is_valid_int(buf)) {
+            int v = atoi(buf);
+            if (v > 0) return v;
+        }
+        printf("  Enter a positive number, 0 to clear, or Enter to keep.\n");
     }
 }
 
