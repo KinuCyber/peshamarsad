@@ -152,7 +152,7 @@ static inline void db_open(DB *db, const char *path)
     /* stmt execution (called "step") */
     int has_schema = (sqlite3_step(stmt) == SQLITE_ROW);
 
-    /* stmt finalization - always finalized, even mid-query */
+    /* stmt finalization -- always finalize, even mid-query */
     sqlite3_finalize(stmt);
 
     if (!has_schema) {
@@ -189,10 +189,10 @@ static inline void db_close(DB *db)
 {
     int rc = sqlite3_close(db->handle);
     if (rc != SQLITE_OK)
-	fprintf(stderr,
-		"peshamarsad: warning: db_close failed: %s\n",
-		sqlite3_errmsg(db->handle)
-	       );
+        fprintf(stderr,
+                "peshamarsad: warning: db_close failed: %s\n",
+                sqlite3_errmsg(db->handle)
+               );
     db->handle = NULL;   /* prevent accidental use after close */
 }
 
@@ -279,7 +279,7 @@ static inline void db_exec(DB *db, const char *sql, ...)
  *       DB_INT, 5, DB_END);
  *
  *   while (db_row(stmt)) {
- *       int  id   = db_col_int (stmt, 0);
+ *       int id           = db_col_int (stmt, 0);
  *       const char *name = db_col_text(stmt, 1);
  *       printf("%d %s\n", id, name);
  *   }
