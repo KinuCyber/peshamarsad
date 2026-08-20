@@ -33,14 +33,19 @@
  *
  * Header-only for the same reason as str.h: single compile unit,
  * no separate .c file needed.
+ *
+ * Migration internals live in db_migrate.h, which is included below
+ * after DB and db_die are defined (db_migrate.h depends on both).
+ * See db_migrate.h for .
  */
 
 #ifndef DB_H
 #define DB_H
 
-#include <stdio.h>      /* fprintf, stderr  */
-#include <stdlib.h>     /* exit             */
-#include <string.h>     /* strcmp           */
+#include <stdio.h>      /* fprintf, stderr, rename  */
+#include <stdlib.h>     /* exit                     */
+#include <string.h>     /* strcmp                   */
+#include <stdarg.h>     /* va_list, va_arg, ...     */
 #include "sqlite3.h"
 #include "str.h"
 #include "schema.h"     /* embedded schema SQL as schema_sql[] byte array */
@@ -67,70 +72,78 @@ typedef struct {
  *
  * Internal helper. Print the SQLite error message and exit.
  * Called whenever a SQLite function returns an error code.
+ * Also used by db_migrate.h (included below).
  * ------------------------------------------------------------------ */
 static inline void db_die(DB *db, const char *context)
 {
     fprintf(stderr,
             "peshamarsad: %s: %s\n",
-	    context,
-	    sqlite3_errmsg(db->handle)
-	   );
+            context,
+            sqlite3_errmsg(db->handle)
+           );
     exit(1);
 }
 
 
 /* ------------------------------------------------------------------
+ * db_migrate.h
+ *
+ * Included here -- after DB and db_die are defined -- because
+ * db_migrate_fail and db_migrate call db_die and accept DB*.
+ * Do not move this include above the DB typedef or db_die definition.
+ * ------------------------------------------------------------------ */
+#include "db_migrate.h"
+
+
+/* ------------------------------------------------------------------
  * db_open
  *
- * Open (or create) the SQLite database at `path`.
+ * Open (or create) the SQLite database at `path`, then:
+ *   - Fresh database:    run the embedded schema SQL (already v2).
+ *   - Existing database: call db_migrate, which checks user_version
+ *                        and runs any needed migrations.
  * Enables foreign key enforcement.
  * Initializes the schema on first run.
- *
  * sqlite3_open returns SQLITE_OK (value 0) on success.
  * Any other return value is an error.
  * ------------------------------------------------------------------ */
 static inline void db_open(DB *db, const char *path)
 {
-    /* open database from path and assigne to pointer of db->handle */
+    /* open database from path and assign to pointer of db->handle */
     int rc = sqlite3_open(path, &db->handle);
     if (rc != SQLITE_OK)
         db_die(db, "could not open database");
 
-    /* enable foreign key enforcement -- SQLite disables this by default */
+    /* Foreign key enforcement is OFF by default in SQLite. */
     rc = sqlite3_exec(db->handle,
-	              "PRAGMA foreign_keys = ON;",
+                      "PRAGMA foreign_keys = ON;",
                       NULL,
 		      NULL,
-		      NULL
-		     );
+		      NULL);
     if (rc != SQLITE_OK)
         db_die(db, "could not enable foreign keys");
 
-    /* enable WAL Mode -- SQLite disables this by default */
+    /* WAL mode: better concurrent read performance; safe for a
+     * single-writer local tool. */
     rc = sqlite3_exec(db->handle,
-	              "PRAGMA journal_mode=WAL;",
+                      "PRAGMA journal_mode=WAL;",
                       NULL,
 		      NULL,
-		      NULL
-		     );
+		      NULL);
     if (rc != SQLITE_OK)
         db_die(db, "could not enter WAL Mode");
 
     /* check if schema is already initialized by testing for the
      * organizations table. If not found, run the embedded schema. */
-    
+
     /* stmt declaration */
     sqlite3_stmt *stmt;
-    
-    /* sqlite queries for stmt to run */
-    const char *check =
-        "SELECT name FROM sqlite_master "
-        "WHERE type='table' AND name='organizations';";
 
     /* stmt preparation */
     rc = sqlite3_prepare_v2(db->handle,
-		            check,
-			    -1,
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name='organizations';",
+                            -1,
 			    &stmt,
 			    NULL);
     if (rc != SQLITE_OK)
@@ -148,17 +161,21 @@ static inline void db_open(DB *db, const char *path)
          * sqlite3_exec runs multiple semicolon-separated statements at once. */
         char *errmsg = NULL;
         if (sqlite3_exec(db->handle,
-			 (const char *)schema_sql,
+                         (const char *)schema_sql,
                          NULL,
 			 NULL,
 			 &errmsg
-			) != SQLITE_OK)
-	{
+			) != SQLITE_OK) {
             fprintf(stderr, "peshamarsad: schema init failed: %s\n", errmsg);
             sqlite3_free(errmsg);
             exit(1);
         }
+        return;   /* fresh database is already current */
     }
+
+    /* Existing database: migrate if user_version < PM_SCHEMA_VERSION.
+     * db_migrate is a no-op when the version is already current. */
+    db_migrate(db, path);
 }
 
 
@@ -196,19 +213,16 @@ static inline void db_close(DB *db)
  *
  * Example:
  *   db_exec(&db, "INSERT INTO organizations (name, registered) VALUES (?, ?)",
- *           DB_TEXT,
- *           "Roots School",
- *           DB_INT,
- *           1,
+ *           DB_TEXT, "Roots School",
+ *           DB_INT,  1,
  *           DB_END);
  * ------------------------------------------------------------------ */
 
 /* Bind type sentinels -- passed before each value in db_exec / db_query */
-#define DB_TEXT  1   /* value is const char * */
+#define DB_TEXT  1   /* value is const char *  */
 #define DB_INT   2   /* value is int           */
+#define DB_NULL  3   /* bind SQL NULL          */
 #define DB_END   0   /* marks end of arguments */
-
-#include <stdarg.h>   /* va_list, va_arg, va_start, va_end */
 
 static inline void db_exec(DB *db, const char *sql, ...)
 {
@@ -226,12 +240,15 @@ static inline void db_exec(DB *db, const char *sql, ...)
     while ((type = va_arg(args, int)) != DB_END) {
         if (type == DB_TEXT) {
             const char *val = va_arg(args, const char *);
-            /* SQLITE_TRANSIENT tells SQLite to copy the string internally.
-             * This is safe even if our buffer is freed before SQLite uses it. */
+	     /* SQLITE_TRANSIENT tells SQLite to copy the string internally.
+	      * This is safe even if our buffer is freed before SQLite uses it. */
             sqlite3_bind_text(stmt, col++, val, -1, SQLITE_TRANSIENT);
         } else if (type == DB_INT) {
             int val = va_arg(args, int);
             sqlite3_bind_int(stmt, col++, val);
+        } else if (type == DB_NULL) {
+            va_arg(args, int);          /* consume dummy value, discard it */
+            sqlite3_bind_null(stmt, col++);
         }
     }
     va_end(args);
@@ -277,7 +294,7 @@ static inline sqlite3_stmt *db_query(DB *db, const char *sql, ...)
     sqlite3_stmt *stmt;
 
     int rc = sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL);
-	    
+
     if (rc != SQLITE_OK)
         db_die(db, "prepare failed");
 
@@ -293,6 +310,9 @@ static inline sqlite3_stmt *db_query(DB *db, const char *sql, ...)
         } else if (type == DB_INT) {
             int val = va_arg(args, int);
             sqlite3_bind_int(stmt, col++, val);
+        } else if (type == DB_NULL) {
+            va_arg(args, int);
+            sqlite3_bind_null(stmt, col++);
         }
     }
     va_end(args);
@@ -363,4 +383,3 @@ static inline int db_last_id(DB *db)
 
 
 #endif /* DB_H */
-
