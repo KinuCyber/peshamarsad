@@ -43,7 +43,7 @@
 #include "db.h"
 #include "commands.h"
 
-#define PM_VERSION "0.2.0"
+#define PM_VERSION "0.2.0-alpha"
 
 /* ------------------------------------------------------------------
  * usage
