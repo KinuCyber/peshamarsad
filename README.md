@@ -49,13 +49,13 @@ For curl:
 
 Linux x86_64
 ```bash
-curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/latest/download/peshamarsad_x86_64
+curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/download/v0.2.0-alpha/peshamarsad_x86_64
 chmod +x peshamarsad_x86_64
 ```
 
 Termux ARM32
 ```bash
-curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/latest/download/peshamarsad_arm32
+curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/download/v0.2.0-alpha/peshamarsad_arm32
 chmod +x peshamarsad_arm32
 ```
 
