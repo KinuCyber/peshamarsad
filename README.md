@@ -1,13 +1,23 @@
 # peshamarsad
-### پیشہ مرصد - Observatory of Profession
+### پیشہ مرصد
+### Profession Observatory
 
 A personal, local-first CLI job-hunt tracker built in C with SQLite.
 Tracks organizations, contacts, open positions, applications, documents
 submitted, and the full status history of every application.
 
+Taken inspiration from PSIC (Pakistan Standard Industrial Classification), ISCO-08 (International Standard Classification of Occupations), ESCO (European Skills, Competences, Qualifications and Occupations), O*NET Content Model (skills, knowledge, abilities, work context, tasks) and more.
+
 Part of the Kinu Cyber toolkit. Sits alongside
 [Auraq](https://github.com/AuraqLabs) (pages) and
 [Ilm Fehrist](https://github.com/KinuCyber/Ilm-Fehrist) (knowledge index).
+
+## Roadmap
+
+Planned pesha suite:
+- peshamarsad: job-hunt tracker
+- peshatajzyagr: job-hunt analytical engine
+- peshabaft: job-hunt follow-up reminders
 
 ---
 
@@ -24,6 +34,68 @@ Part of the Kinu Cyber toolkit. Sits alongside
 
 ---
 
+## Installation
+
+> [!CAUTION]
+> Only x86_64 and arm32 are compiled and manually tested.
+> Only they're available for direct download for now.
+
+There are three ways:
+- curl download (directly in working directory)
+- Manual download from releases page
+- Build using make
+
+For curl:
+
+Linux x86_64
+```bash
+curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/latest/download/peshamarsad_x86_64
+chmod +x peshamarsad_x86_64
+```
+
+Termux ARM32
+```bash
+curl -LOJ https://github.com/KinuCyber/peshamarsad/releases/latest/download/peshamarsad_arm32
+chmod +x peshamarsad_arm32
+```
+
+For manual download:
+[releases page](https://github.com/KinuCyber/peshamarsad/releases)
+Then move the binary to the working directory.
+
+
+For build from source, look below.
+
+---
+
+## Build
+
+Pre-requisites:
+- gcc (for linux) or clang (for termux)
+
+For x86_64 (Linux on 64-bit device):
+```bash
+git clone https://github.com/KinuCyber/peshamarsad
+cd peshamarsad
+make
+```
+
+For ARM32 (Termux on a 32-bit device):
+```bash
+git clone https://github.com/KinuCyber/peshamarsad
+cd peshamarsad
+make arm32
+```
+
+For ARM64 (Termux on a 64-bit device):
+```bash
+git clone https://github.com/KinuCyber/peshamarsad
+cd peshamarsad
+make arm64
+```
+
+---
+
 ## Usage
 
 ```bash
@@ -36,13 +108,15 @@ peshamarsad <command>
 
 ---
 
-## Commands (planned)
+## Commands
 
 ### Organizations
 ```bash
 peshamarsad org add
 peshamarsad org list
 peshamarsad org show <id>
+peshamarsad org link-add <org_id>
+peshamarsad org link-list <org_id>
 peshamarsad org update <id>
 peshamarsad org delete <id>
 ```
@@ -59,8 +133,10 @@ peshamarsad contact add
 peshamarsad contact list [--org <org_id>]
 peshamarsad contact show <id>
 peshamarsad contact update <id>
-peshamarsad contact update-personality <id>   # reorder/replace personality list
-peshamarsad contact update-attitude <id>      # reorder/replace attitude list
+peshamarsad contact update-personality <id>
+peshamarsad contact update-attitude <id>
+peshamarsad contact method-add <contact_id>
+peshamarsad contact method-list <contact_id>
 peshamarsad contact delete <id>
 ```
 
@@ -170,23 +246,6 @@ Tables:
 
 ---
 
-## Status history vs current_status
-
-`applications.current_status` is a denormalised convenience field.
-`status_history` is the authoritative record.
-
-The CLI updates both atomically on every status change.
-To query the current status independently:
-
-```sql
-SELECT status FROM status_history
-WHERE application_id = ?
-ORDER BY date DESC
-LIMIT 1;
-```
-
----
-
 ## Notes on personality and attitude fields
 
 Both fields on the `contacts` table are ordered, comma-separated strings.
@@ -205,7 +264,7 @@ approach handles additions, removals, and reorderings in one step.
 
 ## Stack
 
-- C
+- C (c99)
 - SQLite 3.53.1 (amalgamation, embedded, no ORM)
 - No external dependencies beyond the C standard library
 
@@ -236,6 +295,3 @@ approach handles additions, removals, and reorderings in one step.
 
     You should have received a copy of the GNU General Public License
     along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-
-
