@@ -269,9 +269,11 @@ See [`schema.sql`](schema.sql) for the full annotated database schema.
 
 Tables:
 - `organizations` - companies and institutions being tracked
+- `org_links` - social media, job board, and other links per organization
 - `addresses` - address fields per organization
 - `reviews` - time-stamped reviews per organization
 - `contacts` - employee profiles with ordered personality and attitude lists
+- `contact_methods` - email, phone, and messaging handles per contact
 - `positions` - job openings at organizations
 - `applications` - applications submitted, with documents and follow-up date
 - `application_contacts` - junction table linking contacts to applications
