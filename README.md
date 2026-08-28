@@ -14,10 +14,38 @@ Part of the Kinu Cyber toolkit. Sits alongside
 
 ## Roadmap
 
-Planned pesha suite:
-- peshamarsad: job-hunt tracker
-- peshatajzyagr: job-hunt analytical engine
-- peshabaft: job-hunt follow-up reminders
+### Current: v0.2.0-alpha
+- Organizations, contacts, positions, applications, status history
+- Document tracking (resume, portfolio, CNIC, matric, domicile, experience letter)
+- Personality archetype and attitude system per contact
+- Discovery source and application channel tracking
+- x86_64 (Linux) and arm32 (Termux) binaries available
+
+### Contributing (planned)
+- CONTRIBUTING.md
+
+### Test Suite (planned)
+- CUnit: Unit testing
+- Shell: Integration testing; state-machine model testing
+- make: make test
+- Mutation testing deferred until test suite is complete
+- System testing and mocking not viable
+
+### Build system (planned)
+- Decide between zigcc or android-ndk
+- Needed for arm64 binary compilation
+
+### Build targets (planned)
+- arm64 (Termux on 64-bit Android) -- requires NDK or Zig CC cross-compilation from x86_64 host; not buildable from arm32 Termux
+
+### v0.3.0 (planned)
+- `shift_type` column on `positions` (Day / Night / Rotating)
+- `salary_asked` and `salary_offered` columns on `applications`
+
+### Pesha suite
+- **peshamarsad** -- job-hunt tracker (this tool)
+- **peshabaft** -- job-hunt follow-up reminders
+- **peshatajzyagr** -- job-hunt analytical engine
 
 ---
 
