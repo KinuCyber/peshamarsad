@@ -21,6 +21,11 @@ Part of the Kinu Cyber toolkit. Sits alongside
 - Discovery source and application channel tracking
 - x86_64 (Linux) and arm32 (Termux) binaries available
 
+### Database migration C file
+
+- db_migrate.h will become a lightweight header
+- Separate db_migrate.c compilation unit fills the heavy migration role
+
 ### Contributing (planned)
 - CONTRIBUTING.md
 
