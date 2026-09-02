@@ -27,19 +27,22 @@ arm32: schema.h peshamarsad_arm32
 
 arm64: schema.h peshamarsad_arm64
 
-peshamarsad_x86_64: peshamarsad.o commands.o sqlite3_x86.o
+peshamarsad_x86_64: peshamarsad.o commands.o db_migrate.o sqlite3_x86.o
 	$(CC_X86) $(CFLAGS) -o $@ $^
 
-peshamarsad_arm32: peshamarsad.c commands.c sqlite3.c
+peshamarsad_arm32: peshamarsad.c commands.c db_migrate.c sqlite3.c
 	$(CC_ARM) $(CFLAGS) $(SQLFLAGS) -m32 -o $@ $^
 
-peshamarsad_arm64: peshamarsad.c commands.c sqlite3.c
+peshamarsad_arm64: peshamarsad.c commands.c db_migrate.c sqlite3.c
 	$(CC_ARM) $(CFLAGS) $(SQLFLAGS) -m64 -o $@ $^
 
 peshamarsad.o: peshamarsad.c commands.h cli.h db.h str.h schema.h
 	$(CC_X86) $(CFLAGS) -c $< -o $@
 
 commands.o: commands.c commands.h cli.h db.h str.h schema.h
+	$(CC_X86) $(CFLAGS) -c $< -o $@
+
+db_migrate.o: db_migrate.c db_migrate.h db.h str.h
 	$(CC_X86) $(CFLAGS) -c $< -o $@
 
 sqlite3_x86.o: sqlite3.c sqlite3.h

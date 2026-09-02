@@ -34,9 +34,7 @@
  * Header-only for the same reason as str.h: single compile unit,
  * no separate .c file needed.
  *
- * Migration internals live in db_migrate.h, which is included below
- * after DB and db_die are defined (db_migrate.h depends on both).
- * See db_migrate.h for .
+ * Migration internals live in db_migrate.c, declard at db_migrate.h
  */
 
 #ifndef DB_H
@@ -47,52 +45,10 @@
 #include <string.h>     /* strcmp                   */
 #include <stdarg.h>     /* va_list, va_arg, ...     */
 #include "sqlite3.h"
+#include "db_types.h"
+#include "db_migrate.h"
 #include "str.h"
 #include "schema.h"     /* embedded schema SQL as schema_sql[] byte array */
-
-
-/* ------------------------------------------------------------------
- * DB
- *
- * A thin struct wrapping sqlite3 *. Having our own type means we can
- * add fields later (e.g. last insert rowid cache) without changing
- * every call site.
- *
- * A struct in C groups related data under one name. Members are
- * accessed with the dot operator: db.handle
- * When accessed through a pointer: db->handle  (equivalent to (*db).handle)
- * ------------------------------------------------------------------ */
-typedef struct {
-    sqlite3 *handle;   /* the raw SQLite connection -- never touch directly */
-} DB;
-
-
-/* ------------------------------------------------------------------
- * db_die
- *
- * Internal helper. Print the SQLite error message and exit.
- * Called whenever a SQLite function returns an error code.
- * Also used by db_migrate.h (included below).
- * ------------------------------------------------------------------ */
-static inline void db_die(DB *db, const char *context)
-{
-    fprintf(stderr,
-            "peshamarsad: %s: %s\n",
-            context,
-            sqlite3_errmsg(db->handle)
-           );
-    exit(1);
-}
-
-
-/* ------------------------------------------------------------------
- * db_migrate.h
- *
- * Included here -- after DB and db_die are defined -- because
- * db_migrate_fail and db_migrate call db_die and accept DB*.
- * Do not move this include above the DB typedef or db_die definition.
- * ------------------------------------------------------------------ */
-#include "db_migrate.h"
 
 
 /* ------------------------------------------------------------------
